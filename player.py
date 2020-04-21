@@ -98,7 +98,7 @@ def movement(player1, player2, ball, w):                                       #
     if dist1 < ball.radius + player1.radius:
         if player1.isjump:                                                     # Odbicie piłka oś Y
             ball.y_speed = - (3 * player1.jumpcount + 20) / 20                 # Skalowanie odbicia w osi Y
-            ball.y = player1.y - ball.radius - player1.radius                  # Przesunięcie piłka za gracze, żeby nie objekt na siebie na nachodziły
+            ball.y = player1.y - ball.radius - player1.radius                  # Przesunięcie piłka za gracze, żeby objekty na siebie nie nachodziły
         else:
             ball.y_speed = - 1                                                 # Odbicie gdy gracz nie porusza się w osi Y
         ball.x_speed = ((ball.x - player1.x) / dist1) * 10                     # Odbicie w X, chujowe, do zmiany, ale jak?
