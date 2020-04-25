@@ -9,7 +9,7 @@ class Player:
         self.jumpCount = 10
         self.radius = radius
         self.points = points
-        self.vel = 5
+        self.vel = 13           # Było 5
         self.touchBall = False
         self.colorRGB = colorRGB
 
