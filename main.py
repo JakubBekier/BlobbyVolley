@@ -6,8 +6,9 @@ from ball import Ball
 pygame.init()
 
 pygame.display.set_caption("Piłko odbijanko")
-bg = pygame.image.load("tlo5.jpg")
+bg = pygame.image.load("tlo.png")
 w, h = pygame.display.Info().current_w, pygame.display.Info().current_h
+bg = pygame.transform.scale(bg, (w, h))
 win = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 clock = pygame.time.Clock()
 
@@ -21,9 +22,9 @@ player2_points = 0
 
 def reset(player1, player2, ball, w, h):  # Reset gry
     player1.x = w * 0.05
-    player1.y = h + player1.radius
+    player1.y = h - player1.radius
     player2.x = w * 0.95
-    player2.y = h + player2.radius
+    player2.y = h - player2.radius
     player1.isJump = False
     player2.isJump = False
     player1.jumpCount = 10
@@ -67,8 +68,8 @@ def movement(player1, player2, ball, w, h):  # Fizyka gry
             player1.isJump = True
     else:
         if player1.jumpCount >= -10:
-            player1.y -= player1.jumpCount * abs(player1.jumpCount) * 0.20  # W tych dwóch liniach można
-            player1.jumpCount -= 0.5  # przeskalować szybkość/wysokość skoku
+            player1.y -= player1.jumpCount * abs(player1.jumpCount) * 0.5  # Było 0.2
+            player1.jumpCount -= 0.5
         else:
             player1.isJump = False
             player1.jumpCount = 10
@@ -83,7 +84,7 @@ def movement(player1, player2, ball, w, h):  # Fizyka gry
             player2.isJump = True
     else:
         if player2.jumpCount >= -10:
-            player2.y -= (player2.jumpCount * abs(player2.jumpCount)) * 0.20
+            player2.y -= (player2.jumpCount * abs(player2.jumpCount)) * 0.5 # Było 0.2
             player2.jumpCount -= 0.5
         else:
             player2.isJump = False
@@ -100,7 +101,7 @@ def movement(player1, player2, ball, w, h):  # Fizyka gry
                 players[player].touchBall = True
                 diffx = (ball.x + ball.radius) - (players[player].x + players[player].radius)
                 diffy = (ball.y + ball.radius) - (players[player].y + players[player].radius)
-                vel = 12.5;
+                vel = 22.5;   # Było 12.5
                 ball.x_speed = diffx / (abs(diffx) + abs(diffy)) * vel;
                 ball.y_speed = diffy / (abs(diffx) + abs(diffy)) * vel;
         else:
@@ -129,12 +130,12 @@ def redraw_game_window(win, bg, player1, player2, ball, w, h):  # Wyświetlanie
     player1.draw(win)
     player2.draw(win)
     ball.draw(win)
-    pygame.draw.line(win, (255, 255, 0,), (w/2, h), (w/2, int(0.6 * h)))
+    pygame.draw.line(win, (255, 255, 0,), (int(w/2), h), (int(w/2), int(0.6 * h)))
     if ball.y < ball.radius:
         pygame.draw.polygon(win, (0, 0, 0),
                             # Dodaje strzałkę pokazującą gdzie jest piłka w przypadku wylecenia za ekran
-                            ((int(ball.x), 3), (int(ball.x) - 3, 6), (int(ball.x) - 1, 4), (int(ball.x) - 1, 13),
-                             (int(ball.x) + 1, 13), (int(ball.x) + 1, 4), (int(ball.x) + 3, 6)))
+                            ((int(ball.x), 6), (int(ball.x) - 6, 12), (int(ball.x) - 2, 8), (int(ball.x) - 2, 26),
+                             (int(ball.x) + 2, 26), (int(ball.x) + 2, 8), (int(ball.x) + 6, 12)))
     pygame.display.update()
     if ball.freeze:
         pygame.time.delay(1000)
