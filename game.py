@@ -1,110 +1,101 @@
 import pygame
+from textpanel import TextPanel
 
 class Game:
     def __init__(self):
-        self.player1_points = 0
-        self.player2_points = 0
-        self.player1_touches = 0
-        self.player2_touches = 0
-        self.player1_series = False
-        self.player2_series = False
-        self.player1_name = "Player1"
-        self.player2_name = "Player2"
+        self.left_player_points = 0
+        self.right_player_points = 0
+        self.left_player_touches = 0
+        self.right_player_touches = 0
+        self.last_win_player = 1
+        self.left_player_name = "Player1"
+        self.right_player_name = "Player2"
+        self.pause = False
 
-    def player1_got_point(self):
-        print("Player1 got point")
-        if self.player1_series:
-            self.player1_points += 1
-        else:
-            self.player1_series = True
-            self.player2_series = False
+    def left_player_got_point(self):
+        print("left_player got point")
+        self.left_player_points += 1
+        self.last_win_player = 1
 
-    def player2_got_point(self):
-        print("Player2 got point")
-        if self.player2_series:
-            self.player2_points += 1
-        else:
-            self.player2_series = True
-            self.player1_series = False
+    def right_player_got_point(self):
+        print("right_player got point")
+        self.right_player_points += 1
+        self.last_win_player = 2
 
-    def player1_touch(self):
-        self.player2_touches = 0
-        self.player1_touches += 1
+    def left_player_touch(self):
+        self.right_player_touches = 0
+        self.left_player_touches += 1
+        print("left_player_touch")
 
-    def player2_touch(self):
-        self.player1_touches = 0
-        self.player2_touches += 1
+    def right_player_touch(self):
+        self.left_player_touches = 0
+        self.right_player_touches += 1
+        print("right_player_touch")
 
     def if_end_of_game(self):
-        if abs(self.player1_points - self.player2_points) >= 2:
-            if self.player1_points >= 2:
+        if abs(self.left_player_points - self.left_player_points) >= 2:
+            if self.left_player_points >= 2:
                 return True
-            elif self.player2_points >= 2:
+            elif self.right_player_points >= 2:
                 return True
         else:
             return False
 
     def show_stats(self,w,h,win):
-        font = pygame.font.Font('freesansbold.ttf', 25)
-        text1 = self.player1_name + ': ' + str(self.player1_points)
-        text2 = self.player2_name + ': ' + str(self.player2_points)
-        if self.player1_series:
+        text1 = self.left_player_name + ': ' + str(self.left_player_points)
+        text2 = self.right_player_name + ': ' + str(self.right_player_points)
+        if self.last_win_player == 1:
             text1 += '!'
-        if self.player2_series:
+        else:
             text2 += '!'
-        text1 = font.render(text1, True, (0, 0, 0))
-        text2 = font.render(text2, True, (0, 0, 0))
-        text_rect1 = text1.get_rect()
-        text_rect2 = text2.get_rect()
-        text_rect1.center = (w // 4, 20)
-        text_rect2.center = (w // 4 + w // 2, 20)
-        win.blit(text1, text_rect1)
-        win.blit(text2, text_rect2)
+        left_player_score = TextPanel(w//4, 20,"comicsans" , 32, text1, (0, 0, 0))
+        right_player_score = TextPanel(w // 2 + w // 4, 20, "comicsans", 32, text2, (0, 0, 0))
+        left_player_score.draw(win)
+        right_player_score.draw(win)
 
 
-def reset(player1, player2, ball, gs, w):  # Reset gry
-    player1.x = 70
-    player1.y = 414
-    player2.x = w - 70
-    player2.y = 414
-    player1.isJump = False
-    player2.isJump = False
-    player1.jumpCount = 10
-    player2.jumpCount = 10
+def reset(left_player, right_player, ball, gs, w):  # Reset gry
+    left_player.x = 70
+    left_player.y = 414
+    right_player.x = w - 70
+    right_player.y = 414
+    left_player.isJump = False
+    right_player.isJump = False
+    left_player.jumpCount = 10
+    right_player.jumpCount = 10
     ball.x_speed = 0
     ball.y_speed = 0
     ball.freeze = True
     ball.firstTouch = False
     ball.y = 250
-    gs.player1_touches = 0
-    gs.player2_touches = 0
+    gs.left_player_touches = 0
+    gs.right_player_touches = 0
 
-def check_game_state(ball,player1,player2,gs,w):
+def check_game_state(ball,left_player,right_player,gs,w):
     if ball.y > 444 - ball.radius:  # Sprawdzanie czy piłka upadła
         if ball.x < w / 2:
-            gs.player2_got_point()
-            ball.x = w - 200
-            ball.y = 200
+            right_player_win(left_player, right_player, ball, gs, w)
         else:
-            gs.player1_got_point()
-            ball.x = 200
-            ball.y = 200
+            left_player_win(left_player, right_player, ball, gs, w)
 
-        print("Player1 ", gs.player1_points, ":", gs.player2_points, "Player2")
-        reset(player1, player2, ball,gs, w)
+    elif gs.left_player_touches == 4:
+        right_player_win(left_player, right_player, ball, gs, w)
 
-    elif gs.player1_touches == 4:
-        gs.player2_got_point()
-        ball.x = w - 200
-        ball.y = 200
-        print("Player1 ", gs.player1_points, ":", gs.player2_points, "Player2")
-        reset(player1, player2, ball, gs, w)
-
-    elif gs.player2_touches == 4:
-        gs.player1_got_point()
-        ball.x = 200
-        ball.y = 200
-        print("Player1 ", gs.player1_points, ":", gs.player2_points, "Player2")
-        reset(player1, player2, ball, gs, w)
+    elif gs.right_player_touches == 4:
+        left_player_win(left_player, right_player, ball, gs, w)
     else:
         pass
+
+def left_player_win(left_player, right_player, ball, gs, w):
+    gs.left_player_got_point()
+    ball.x = 200
+    ball.y = 200
+    print("left_player ", gs.left_player_points, ":", gs.right_player_points, "right_player")
+    reset(left_player, right_player, ball, gs, w)
+
+def right_player_win(left_player, right_player, ball, gs, w):
+    gs.right_player_got_point()
+    ball.x = w - 200
+    ball.y = 200
+    print("left_player ", gs.left_player_points, ":", gs.right_player_points, "right_player")
+    reset(left_player, right_player, ball, gs, w)

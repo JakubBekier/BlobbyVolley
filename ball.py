@@ -24,19 +24,19 @@ class Ball:
         for player in range(0, 2):
             if dist[player] <= radius_sum:
                 self.freeze = False
-                if not players[player].touchBall:
-                    players[player].touchBall = True
+                if not players[player].istouchingBall:
+                    players[player].istouchingBall = True
                     if player == 0:
-                        gs.player1_touch()
+                        gs.left_player_touch()
                     else:
-                        gs.player2_touch()
+                        gs.right_player_touch()
                     diffx = (self.x + self.radius) - (players[player].x + players[player].radius)
                     diffy = (self.y + self.radius) - (players[player].y + players[player].radius)
                     vel = 12.5;
                     self.x_speed = diffx / (abs(diffx) + abs(diffy)) * vel;
                     self.y_speed = diffy / (abs(diffx) + abs(diffy)) * vel;
             else:
-                players[player].touchBall = False
+                players[player].istouchingBall = False
 
         if not self.freeze:
             self.x += self.x_speed

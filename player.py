@@ -8,7 +8,7 @@ class Player:
         self.jumpCount = 10
         self.radius = radius
         self.vel = 5
-        self.touchBall = False
+        self.istouchingBall = False
         self.colorRGB = colorRGB
         self.leftBorder = leftBorder
         self.rightBorder = rightBorder
@@ -31,6 +31,23 @@ class Player:
             if keys[self.jumpButton]:
                 self.isJump = True
         else:
+            if self.jumpCount >= -10:
+                self.y -= self.jumpCount * abs(self.jumpCount) * 0.20  # W tych dwóch liniach można
+                self.jumpCount -= 0.5  # przeskalować szybkość/wysokość skoku
+            else:
+                self.isJump = False
+                self.jumpCount = 10
+
+    def move_left(self):
+        if self.x > self.leftBorder + self.vel:
+            self.x -= self.vel
+
+    def move_right(self):
+        if self.x < self.rightBorder - self.vel:
+            self.x += self.vel
+
+    def jump(self):
+        if self.isJump:
             if self.jumpCount >= -10:
                 self.y -= self.jumpCount * abs(self.jumpCount) * 0.20  # W tych dwóch liniach można
                 self.jumpCount -= 0.5  # przeskalować szybkość/wysokość skoku

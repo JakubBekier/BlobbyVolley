@@ -3,9 +3,9 @@ import pickle
 
 
 class Network:
-    def __init__(self):
+    def __init__(self, server_address):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server = "127.0.0.1"
+        self.server = server_address
         self.port = 5555
         self.addr = (self.server, self.port)
         self.p = self.connect()
@@ -15,6 +15,7 @@ class Network:
 
     def connect(self):
         try:
+            print("Trying to connect with " + self.server + "...")
             self.client.connect(self.addr)
             return pickle.loads(self.client.recv(2048))
         except:
@@ -29,3 +30,6 @@ class Network:
 
     def receive(self):
         return pickle.loads(self.client.recv(2048))
+
+    def disconnect(self):
+        self.client.close()

@@ -1,17 +1,21 @@
-import math
-import pygame
 from player import *
 from ball import Ball
 from network import Network
-from server import start_server
-from game import Game, check_game_state
+from server import start_server, get_server_address
+from game import Game, check_game_state, left_player_win, right_player_win
 from _thread import *
+from textbutton import TextButton
+from textinput import TextInput
+from textpanel import TextPanel
+from screens import *
+from buffer import Buffer
+import sys
 
 pygame.init()
 
 pygame.display.set_caption("First game")
 bg = pygame.image.load("tlo3.png")
-w, h = 788,444
+w, h = 788, 444
 print(w, h)
 win = pygame.display.set_mode((w, h))
 clock = pygame.time.Clock()
@@ -31,24 +35,46 @@ def redraw_game_window(win, bg, player1, player2, ball, game):  # Wyświetlanie
     pygame.display.update()
 
 
-def LAN_game():
+def LAN_game(server_address):
     run = True
-    n = Network()
+    n = Network(server_address)
     try:
         player1, ball = n.getP()
     except:
         win.blit(bg, (0, 0))
         if confirmation_screen("Cannot connect. Do you want try again?"):
-            LAN_game()
+            LAN_game(server_address)
         else:
             menu_screen()
 
 
     while run:
         clock.tick(75)
-        player1, player2, ball, game = n.send(player1)
-        redraw_game_window(win, bg, player1, player2, ball,game)
-        player1.move()
+
+        try:
+            # n.send([player1, flag_pause, flat_resume])
+            player1, player2, ball, game = n.send([player1, False, False])
+        except:
+            win.blit(bg, (0,0))
+            text1 = TextPanel(w // 2, h // 4.5, "comicsans", 30, "Lost connection with server " + str(get_server_address()), (0, 0, 0))
+            text2 = TextPanel(w // 2, h // 3.4, "comicsans", 34, "Back to menu...", (0, 0, 0))
+            text1.draw(win)
+            text2.draw(win)
+            pygame.display.update()
+            pygame.time.delay(2000)
+            break
+
+
+        redraw_game_window(win, bg, player1, player2, ball, game)
+        if game.pause:
+            text1 = TextPanel(w//2, h//4.5, "comicsans", 30, "Server " + str(get_server_address()), (0, 0, 0))
+            text2 = TextPanel(w // 2, h//3.4, "comicsans", 34, "Waiting for opponent...", (0, 0, 0))
+            text1.draw(win)
+            text2.draw(win)
+            pygame.display.update()
+            pygame.time.delay(50)
+        else:
+            player1.move()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
@@ -56,12 +82,89 @@ def LAN_game():
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_ESCAPE]:
+            n.send([player1, True, False])
             if confirmation_screen("Are you sure you want to quit?"):
+                n.disconnect()
                 run = False
+            else:
+                n.send([player1,False,True])
     menu_screen()
 
 
-def main():
+game = Game()
+game_received = Game()
+buffer_player1 = Buffer()
+buffer_player2 = Buffer()
+buffer_ball_send = Buffer()
+buffer_ball_received = Buffer()
+def thread_updating_data(n,ccc):
+    global buffer_player1, buffer_player2, buffer_ball_send, buffer_ball_received, game, game_received
+    while True:
+        bufp1 = buffer_player1
+        bufb = buffer_ball_send
+        buffer_player1 = Buffer()
+        buffer_ball_send = Buffer()
+        buffer_player2, buffer_ball_received, opponent_score = n.send([bufp1, bufb, game])
+
+        pygame.time.delay(34)
+
+def online_game(server_address):
+    run = True
+    n = Network(server_address)
+    global buffer_player1, buffer_player2, buffer_ball_send, buffer_ball_received, game, game_received
+    player1, player2, ball, game, player = n.getP()
+    print("connected")
+    start_new_thread(thread_updating_data, (n, 0))
+
+    while run:
+        clock.tick(75)
+        keys = pygame.key.get_pressed()
+
+        player1.move()
+
+        buffer_player1.buf.append([player1.x, player1.y])
+
+        if len(buffer_player2.buf) > 0:
+            player2.x, player2.y = buffer_player2.buf[0][0], buffer_player2.buf[0][1]
+            buffer_player2.buf = buffer_player2.buf[1:]
+
+        if len(buffer_ball_received.buf) > 0:
+            buf = buffer_ball_received.buf
+            ball.x, ball.y, ball.x_speed, ball.y_speed, ball.freeze = buf[0][0], buf[0][1], buf[0][2], buf[0][3], buf[0][4]
+            buffer_ball_received.buf = buffer_ball_received.buf[1:]
+        else:
+            ball.move([player1, Player(1000, 1000, 10, (0, 0, 0), 1000, 1000, 0, 0, 0)], game, w)
+
+        if player1.istouchingBall:
+            buffer_ball_send.buf.append([ball.x, ball.y, ball.x_speed, ball.y_speed, ball.freeze])
+
+        if player == 0:
+            check_game_state(ball, player1, player2, game, w)
+            if game_received.right_player_points > game.player2_points:
+                right_player_win(player1, player2, ball, game, w)
+        else:
+            player_score = game.player2_points
+            check_game_state(ball, player2, player1, game, w)
+            if game_received.left_player_points > game.player1_points:
+                left_player_win(player2, player1, ball, game, w)
+
+        redraw_game_window(win, bg, player1, player2, ball, game)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+                pygame.quit()
+
+        if keys[pygame.K_ESCAPE]:
+            n.send([player1, True, False])
+            if confirmation_screen("Are you sure you want to quit?"):
+                n.disconnect()
+                run = False
+            else:
+                n.send([player1,False,True])
+    menu_screen()
+
+def human_vs_human():
     run = True
     player1 = Player(50, 414, 30, (255, 0, 0), 30, w / 2 - 30, pygame.K_a, pygame.K_d, pygame.K_w)
     player2 = Player(w - 50, 414, 30, (0, 255, 0), w / 2 + 30, w - 30, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP)
@@ -72,9 +175,9 @@ def main():
         clock.tick(75)
         player1.move()
         player2.move()
-        ball.move([player1, player2],gs, w)
-        check_game_state(ball,player1,player2,gs,w)
-        redraw_game_window(win, bg, player1, player2, ball,gs)
+        ball.move([player1, player2], gs, w)
+        check_game_state(ball, player1, player2, gs, w)
+        redraw_game_window(win, bg, player1, player2, ball, gs)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
@@ -88,46 +191,128 @@ def main():
     menu_screen()
 
 
-def check_text_rect_hover(text_rect):
-    mpx, mpy = pygame.mouse.get_pos()
-    if mpx > text_rect.left and mpx < text_rect.right and mpy > text_rect.top and mpy < text_rect.bottom:
-        return True
-    else:
-        return False
+def menu_screen():
+    run = True
+    clock = pygame.time.Clock()
+    bg = pygame.image.load("tlo3.png")
+    start_n_game = TextButton(w/2, h/3, "comicsans", 40, "START NORMAL GAME", (0, 0, 0))
+    start_LAN_game = TextButton(w/2, h/2.1, "comicsans", 40, "START LAN GAME", (0, 0, 0))
+    start_online_game = TextButton(w / 2, h / 1.6, "comicsans", 40, "START ONLINE GAME", (0, 0, 0))
+
+    while run:
+        clock.tick(60)
+        start_n_game_hover = start_n_game.cursor_hover()
+        start_LAN_game_hover = start_LAN_game.cursor_hover()
+        start_online_game_hover = start_online_game.cursor_hover()
+
+        if start_n_game_hover:
+            start_n_game.update("START NORMAL GAME", (0, 200, 0))
+        else:
+            start_n_game.update("START NORMAL GAME", (0, 0, 0))
+
+        if start_LAN_game_hover:
+            start_LAN_game.update("START LAN GAME", (0, 200, 0))
+        else:
+            start_LAN_game.update("START LAN GAME", (0, 0, 0))
+
+        if start_online_game_hover:
+            start_online_game.update("START ONLINE GAME", (0, 200, 0))
+        else:
+            start_online_game.update("START ONLINE GAME", (0, 0, 0))
+
+        win.blit(bg, (0, 0))
+        start_n_game.draw(win)
+        start_LAN_game.draw(win)
+        start_online_game.draw(win)
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                run = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if start_n_game_hover or start_LAN_game_hover or start_online_game_hover:
+                    run = False
+
+    if start_n_game_hover:
+        human_vs_human()
+
+    if start_LAN_game_hover:
+        server_screen()
+
+    if start_online_game_hover:
+        online_game('172.104.130.211')
+
+def server_screen():
+    run = True
+    clock = pygame.time.Clock()
+    host_game = TextButton(w/2, h/3, "comicsans", 40, "HOST GAME", (0, 0, 0))
+    join_ex_server = TextButton(w/2, h/2, "comicsans", 40, "JOIN EXISTING SERVER", (0, 0, 0))
+
+    while run:
+        clock.tick(60)
+        host_game_hover = host_game.cursor_hover()
+        join_ex_server_hover = join_ex_server.cursor_hover()
+
+        if host_game_hover:
+            host_game.update("HOST GAME", (0, 200, 0))
+        else:
+            host_game.update("HOST GAME", (0, 0, 0))
+
+        if join_ex_server_hover:
+            join_ex_server.update("JOIN EXISTING SERVER", (0, 200, 0))
+        else:
+            join_ex_server.update("JOIN EXISTING SERVER", (0, 0, 0))
+
+        win.blit(bg, (0, 0))
+        host_game.draw(win)
+        join_ex_server.draw(win)
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                run = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if host_game_hover or join_ex_server_hover:
+                    run = False
+
+    if host_game_hover:
+        start_new_thread(start_server,())
+        LAN_game(get_server_address())
+
+    if join_ex_server_hover:
+        ip = get_LAN_address_screen()
+        if ip == '-1':
+            menu_screen()
+        else:
+            LAN_game(ip)
 
 def confirmation_screen(message):
     run = True
     clock = pygame.time.Clock()
-    font = pygame.font.SysFont("comicsans", 40)
-    text = font.render(message, True, (0, 0, 0))
-    yes = font.render("Yes", True, (200, 0, 0))
-    no = font.render("No", True, (0, 0, 0))
-    text_rect = text.get_rect()
-    yes_rect = yes.get_rect()
-    no_rect = no.get_rect()
-    text_rect.center = (w // 2, h // 2 - 50)
-    yes_rect.center = (w // 2 - 60, h // 2)
-    no_rect.center = (w // 2 + 50, h // 2)
+    text = TextPanel(w/2, h/2 - 50, "comicsans", 40, message, (0, 0, 0))
+    yes = TextButton(w/2 - 60, h/2, "comicsans", 40, "Yes", (0, 0, 0))
+    no = TextButton(w/2 + 50, h/2, "comicsans", 40, "No", (0, 0, 0))
 
     while run:
         clock.tick(60)
-
-        yes_hover = check_text_rect_hover(yes_rect)
-        no_hover = check_text_rect_hover(no_rect)
+        yes_hover = yes.cursor_hover()
+        no_hover = no.cursor_hover()
 
         if yes_hover:
-            yes = font.render("Yes", True, (200, 0, 0))
+            yes.update("Yes", (200, 0, 0))
         else:
-            yes = font.render("Yes", True, (0, 0, 0))
+            yes.update("Yes", (0, 0, 0))
 
         if no_hover:
-            no = font.render("No", True, (0, 0, 200))
+            no.update("No", (0, 0, 200))
         else:
-            no = font.render("No", True, (0, 0, 0))
+            no.update("No", (0, 0, 0))
 
-        win.blit(text, text_rect)
-        win.blit(yes, yes_rect)
-        win.blit(no, no_rect)
+        text.draw(win)
+        yes.draw(win)
+        no.draw(win)
         pygame.display.update()
 
         for event in pygame.event.get():
@@ -145,99 +330,57 @@ def confirmation_screen(message):
         return False
 
 
-def menu_screen():
+def get_LAN_address_screen():
     run = True
     clock = pygame.time.Clock()
-    bg = pygame.image.load("tlo3.png")
-    font = pygame.font.SysFont("comicsans", 40)
-    start_n_game = font.render("START NORMAL GAME", True, (0, 0, 0))
-    start_n_game_rect = start_n_game.get_rect()
-    start_n_game_rect.center = (w // 2, h // 3)
-    start_LAN_game = font.render("START LAN GAME", True, (0, 0, 0))
-    start_LAN_game_rect = start_LAN_game.get_rect()
-    start_LAN_game_rect.center = (w // 2, h // 2)
+    textinput = TextInput()
+    textinput.max_string_length = 15
+    text_button = TextButton(w//2, h//2.5, "comicsans", 40, "Enter LAN server ip address", (0, 0, 0))
+    connect_button = TextButton(w//2 - 70, h//1.6, "comicsans", 40, "Connect", (0, 0, 0))
+    cancel_button = TextButton(w // 2 + 70, h//1.6, "comicsans", 40, "Cancel", (0, 0, 0))
 
     while run:
         clock.tick(60)
-
-        start_n_game_hover = check_text_rect_hover(start_n_game_rect)
-        start_LAN_game_hover = check_text_rect_hover(start_LAN_game_rect)
-
-        if start_n_game_hover:
-            start_n_game = font.render("START NORMAL GAME", True, (0, 200, 0))
-        else:
-            start_n_game = font.render("START NORMAL GAME", True, (0, 0, 0))
-
-        if start_LAN_game_hover:
-            start_LAN_game = font.render("START LAN GAME", True, (0, 200, 0))
-        else:
-            start_LAN_game = font.render("START LAN GAME", True, (0, 0, 0))
-
         win.blit(bg, (0, 0))
-        win.blit(start_n_game, start_n_game_rect)
-        win.blit(start_LAN_game, start_LAN_game_rect)
+        pygame.draw.rect(win,(255,255,255), (w//2 - 110, h//2 - 15, 220,31))
+        connect_button_hover = connect_button.cursor_hover()
+        cancel_button_hover = cancel_button.cursor_hover()
+
+        if connect_button_hover:
+            connect_button.update("Connect", (0,255,0))
+        else:
+            connect_button.update("Connect", (0, 0, 0))
+
+        if cancel_button_hover:
+            cancel_button.update("Cancel", (255,0,0))
+        else:
+            cancel_button.update("Cancel", (0, 0, 0))
+
+
+        tr = textinput.get_surface().get_rect()
+        tr.center = (w // 2, h // 2)
+        win.blit(textinput.get_surface(), tr)
+        text_button.draw(win)
+        connect_button.draw(win)
+        cancel_button.draw(win)
+
         pygame.display.update()
 
-        for event in pygame.event.get():
+
+        events = pygame.event.get()
+        for event in events:
             if event.type == pygame.QUIT:
-                pygame.quit()
-                run = False
+                exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if start_n_game_hover or start_LAN_game_hover:
+                if connect_button_hover or cancel_button_hover:
                     run = False
 
-    if start_n_game_hover:
-        main()
+        textinput.update(events)
 
-    if start_LAN_game_hover:
-        server_screen()
-
-
-def server_screen():
-    run = True
-    clock = pygame.time.Clock()
-    font = pygame.font.SysFont("comicsans", 40)
-    host_game = font.render("HOST GAME", True, (0, 0, 0))
-    host_game_rect = host_game.get_rect()
-    host_game_rect.center = (w // 2, h // 3)
-    join_ex_server = font.render("JOIN EXISTING SERVER", True, (0, 0, 0))
-    join_ex_server_rect = join_ex_server.get_rect()
-    join_ex_server_rect.center = (w // 2, h // 2)
-
-    while run:
-        clock.tick(60)
-
-        host_game_hover = check_text_rect_hover(host_game_rect)
-        join_ex_server_hover = check_text_rect_hover(join_ex_server_rect)
-
-        if host_game_hover:
-            host_game = font.render("HOST GAME", True, (0, 200, 0))
-        else:
-            host_game = font.render("HOST GAME", True, (0, 0, 0))
-
-        if join_ex_server_hover:
-            join_ex_server = font.render("JOIN EXISTING SERVER", True, (0, 200, 0))
-        else:
-            join_ex_server = font.render("JOIN EXISTING SERVER", True, (0, 0, 0))
-
-        win.blit(bg, (0, 0))
-        win.blit(host_game, host_game_rect)
-        win.blit(join_ex_server, join_ex_server_rect)
-        pygame.display.update()
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                run = False
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if host_game_hover or join_ex_server_hover:
-                    run = False
-
-    if host_game_hover:
-        start_new_thread(start_server,())
-        LAN_game()
-
-    if join_ex_server_hover:
-        LAN_game()
+    if connect_button_hover:
+        return textinput.get_text()
+    else:
+        return '-1'
 
 menu_screen()
+#online_game('127.0.0.1')
