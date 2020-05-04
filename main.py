@@ -36,10 +36,9 @@ def redraw_game_window(win, bg, player1, player2, ball, game):  # Wyświetlanie
 
 
 def LAN_game(server_address):
-    run = True
     n = Network(server_address)
     try:
-        player1, player2, ball = n.getP()
+        player1, player2, ball, game, guest_connected = n.getP()
     except:
         win.blit(bg, (0, 0))
         if confirmation_screen("Cannot connect. Do you want try again?"):
@@ -47,13 +46,13 @@ def LAN_game(server_address):
         else:
             menu_screen()
 
-
+    run = True
     while run:
         clock.tick(75)
 
         try:
             # n.send([player1, flag_pause, flat_resume])
-            player2, ball, game = n.send([player1, False, False])
+            player2, ball, game, guest_connected = n.send([player1, False, False])
         except:
             win.blit(bg, (0,0))
             text1 = TextPanel(w // 2, h // 4.5, "comicsans", 30, "Lost connection with server " + str(get_server_address()), (0, 0, 0))
@@ -66,15 +65,19 @@ def LAN_game(server_address):
 
 
         redraw_game_window(win, bg, player1, player2, ball, game)
-        if game.pause:
+        if game.pause or guest_connected == False:
             text1 = TextPanel(w//2, h//4.5, "comicsans", 30, "Server " + str(get_server_address()), (0, 0, 0))
-            text2 = TextPanel(w // 2, h//3.4, "comicsans", 34, "Waiting for opponent...", (0, 0, 0))
+            if guest_connected == False:
+                text2 = TextPanel(w // 2, h//3.4, "comicsans", 34, "Waiting for opponent...", (0, 0, 0))
+            else:
+                text2 = TextPanel(w // 2, h // 3.4, "comicsans", 34, "Game paused...", (0, 0, 0))
             text1.draw(win)
             text2.draw(win)
             pygame.display.update()
             pygame.time.delay(50)
         else:
             player1.move()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
@@ -87,7 +90,7 @@ def LAN_game(server_address):
                 n.disconnect()
                 run = False
             else:
-                n.send([player1,False,True])
+                n.send([player1, False, True])
     menu_screen()
 
 
