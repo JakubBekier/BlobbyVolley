@@ -39,7 +39,7 @@ def LAN_game(server_address):
     run = True
     n = Network(server_address)
     try:
-        player1, ball = n.getP()
+        player1, player2, ball = n.getP()
     except:
         win.blit(bg, (0, 0))
         if confirmation_screen("Cannot connect. Do you want try again?"):
@@ -53,7 +53,7 @@ def LAN_game(server_address):
 
         try:
             # n.send([player1, flag_pause, flat_resume])
-            player1, player2, ball, game = n.send([player1, False, False])
+            player2, ball, game = n.send([player1, False, False])
         except:
             win.blit(bg, (0,0))
             text1 = TextPanel(w // 2, h // 4.5, "comicsans", 30, "Lost connection with server " + str(get_server_address()), (0, 0, 0))
@@ -93,25 +93,26 @@ def LAN_game(server_address):
 
 game = Game()
 game_received = Game()
+ball = 0
 buffer_player1 = Buffer()
 buffer_player2 = Buffer()
 buffer_ball_send = Buffer()
 buffer_ball_received = Buffer()
 def thread_updating_data(n,ccc):
-    global buffer_player1, buffer_player2, buffer_ball_send, buffer_ball_received, game, game_received
+    global buffer_player1, buffer_player2, buffer_ball_send, buffer_ball_received, game, game_received, ball
     while True:
         bufp1 = buffer_player1
         bufb = buffer_ball_send
         buffer_player1 = Buffer()
         buffer_ball_send = Buffer()
-        buffer_player2, buffer_ball_received, opponent_score = n.send([bufp1, bufb, game])
+        buffer_player2, buffer_ball_received, game_received = n.send([bufp1, bufb, game, ball.x])
 
-        pygame.time.delay(34)
+        #pygame.time.delay(50)
 
 def online_game(server_address):
     run = True
     n = Network(server_address)
-    global buffer_player1, buffer_player2, buffer_ball_send, buffer_ball_received, game, game_received
+    global buffer_player1, buffer_player2, buffer_ball_send, buffer_ball_received, game, game_received, ball
     player1, player2, ball, game, player = n.getP()
     print("connected")
     start_new_thread(thread_updating_data, (n, 0))
@@ -133,20 +134,30 @@ def online_game(server_address):
             ball.x, ball.y, ball.x_speed, ball.y_speed, ball.freeze = buf[0][0], buf[0][1], buf[0][2], buf[0][3], buf[0][4]
             buffer_ball_received.buf = buffer_ball_received.buf[1:]
         else:
-            ball.move([player1, Player(1000, 1000, 10, (0, 0, 0), 1000, 1000, 0, 0, 0)], game, w)
+            if player == 0:
+                ball.move([player1, player2], game, w)
+            if player == 1:
+                ball.move([player2, player1], game, w)
 
-        if player1.istouchingBall:
+        if game.player_is_touching_ball[player]:
             buffer_ball_send.buf.append([ball.x, ball.y, ball.x_speed, ball.y_speed, ball.freeze])
 
+
+        print(game.right_player_points, game.left_player_points)
+
         if player == 0:
-            check_game_state(ball, player1, player2, game, w)
-            if game_received.right_player_points > game.player2_points:
+            if game_received.right_player_points > game.right_player_points:
                 right_player_win(player1, player2, ball, game, w)
+            elif game_received.left_player_points > game.left_player_points:
+                left_player_win(player1, player2, ball, game, w)
+            check_game_state(ball, player1, player2, game, w)
         else:
-            player_score = game.player2_points
-            check_game_state(ball, player2, player1, game, w)
-            if game_received.left_player_points > game.player1_points:
+            if game_received.right_player_points > game.right_player_points:
+                right_player_win(player2, player1, ball, game, w)
+            elif game_received.left_player_points > game.left_player_points:
                 left_player_win(player2, player1, ball, game, w)
+            check_game_state(ball, player2, player1, game, w)
+
 
         redraw_game_window(win, bg, player1, player2, ball, game)
 

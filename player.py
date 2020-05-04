@@ -8,7 +8,6 @@ class Player:
         self.jumpCount = 10
         self.radius = radius
         self.vel = 5
-        self.istouchingBall = False
         self.colorRGB = colorRGB
         self.leftBorder = leftBorder
         self.rightBorder = rightBorder

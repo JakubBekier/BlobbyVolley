@@ -8,6 +8,7 @@ class Game:
         self.left_player_touches = 0
         self.right_player_touches = 0
         self.last_win_player = 1
+        self.player_is_touching_ball = [False, False]
         self.left_player_name = "Player1"
         self.right_player_name = "Player2"
         self.pause = False

@@ -22,7 +22,10 @@ def get_server_address():
     return server
 
 def threaded_client(conn, player):
-    conn.send(pickle.dumps([players[player], ball]))
+    if player == 0:
+        conn.send(pickle.dumps([players[0], players[1], ball]))
+    else:
+        conn.send(pickle.dumps([players[1], players[0], ball]))
     global master_taken, guest_taken
     reply = ""
     while True:
@@ -41,10 +44,10 @@ def threaded_client(conn, player):
                 if flag_pause:
                     game.pause = True
 
-                if player == 1:
-                    reply = [players[1], players[0], ball, game]
+                if player == 0:
+                    reply = [players[1], ball, game]
                 else:
-                    reply = [players[0], players[1], ball, game]
+                    reply = [players[0],ball, game]
 
                 if player == 1 and game.pause == False:
                     ball.move(players,game,w)

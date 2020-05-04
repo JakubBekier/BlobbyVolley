@@ -8,8 +8,8 @@ import pygame
 from buffer import Buffer
 import sys
 
-#server = '172.104.130.211'
-server = '127.0.0.1'
+server = '172.104.130.211'
+#server = '127.0.0.1'
 port = 5555
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -71,14 +71,24 @@ def threaded_client(conn, player, slot):
                     if player == 0:
                         buffers_player1[slot] = data[0]
                         buffers_ball1[slot] = data[1]
-                        games[slot].player1_points = data[2]
-                        reply = [buffers_player2[slot], buffers_ball2[slot], games[slot].player2_points]
+                        if data[3] < w/2:
+                            games[slot] = data[2]
+                        else:
+                            games[slot].right_player_points = max(games[slot].right_player_points,data[2].right_player_points)
+                            games[slot].left_player_points = max(games[slot].left_player_points, data[2].left_player_points)
+                        reply = [buffers_player2[slot], buffers_ball2[slot], games[slot]]
+
                     else:
                         buffers_player2[slot] = data[0]
                         buffers_ball2[slot] = data[1]
-                        games[slot].player2_points = data[2]
-                        reply = [buffers_player1[slot], buffers_ball1[slot], games[slot].player1_points]
+                        if data[3] >= w/2:
+                            games[slot] = data[2]
+                        else:
+                            games[slot].right_player_points = max(games[slot].right_player_points, data[2].right_player_points)
+                            games[slot].left_player_points = max(games[slot].left_player_points, data[2].left_player_points)
+                        reply = [buffers_player1[slot], buffers_ball1[slot], games[slot]]
 
+            #print(games[slot].left_player_points, games[slot].right_player_points)
 
             conn.send(pickle.dumps(reply))
         except:
