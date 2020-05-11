@@ -1,0 +1,18 @@
+Zadanie 1
+Napisz serwer umożliwiający grę pomiędzy dwoma klientami. Uzupełnij plik server.py zgodnie z zawartą instrukcją.
+Następnie przetestuj działanie serwera przez uruchomienie klientów (plik main.py).
+
+Zadanie 2
+Kod, przedstawiony jako przykładowy, wyświetla kulkę na ekranie, dodaj funkcję umożliwiającą sterowanie obiektem za pomocą przycisków
+na klawiaturze. Rozwiń skrypt o drugi obiekt, który jest zawieszony w powietrzu.
+W momencie kontaktu powinien zmieniać kolor z białego na czerwony.
+
+Zadanie 3
+Zaimplementuj klasę TextButton przydatną przy budowie menu. Uzupełnij plik textbutton.py zgodnie z zawartą instrukcją.
+Przetestuj działanie przez uruchomienie pliku main.py. Przycisk powinien znajdować się na środku ekranu, 
+reagować na położenie kursora oraz zamykać program po wciśnięciu.
+
+Zadanie 4
+Uzupełnij plik client.py odpowiedzialny za połączenie po stronie klienta do gry przez internet,
+zgodnie ze schematem pokazanym na prezentacji. Rozwiń funkcje thread_updating_data i online_game zgodnie ze wskazówkami.
+Następnie przetestuj działanie.
